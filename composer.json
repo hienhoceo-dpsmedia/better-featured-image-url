@@ -20,7 +20,34 @@
 	},
 	"scripts": {
 		"phpcs": "vendor/bin/phpcs",
-		"lint-fix": "./vendor/bin/phpcbf --standard=phpcs.xml"
+		"lint-fix": "./vendor/bin/phpcbf --standard=phpcs.xml",
+		"build": "composer archive --file=featured-image-with-url --format=zip"
+	},
+	"archive": {
+		"exclude": [
+			"/.git",
+			"/.github",
+			"/.wordpress-org",
+			"/bin",
+			"/node_modules",
+			"/tests",
+			"/src",
+			"/vendor",
+			"CHANGELOG.md",
+			"CODE_OF_CONDUCT.md",
+			"composer.json",
+			"composer.lock",
+			"CONTRIBUTING.md",
+			"CREDITS.md",
+			"LICENSE.md",
+			"package-lock.json",
+			"package.json",
+			"phpcs.xml",
+			"phpunit.xml",
+			"README.md",
+			"webpack.config.js",
+			".*"
+		]
 	},
 	"minimum-stability": "dev",
 	"config": {
