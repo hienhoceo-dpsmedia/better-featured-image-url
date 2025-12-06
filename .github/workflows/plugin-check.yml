@@ -25,7 +25,14 @@ jobs:
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: ${{ github.event.repository.name }}
-          path: ${{ github.event.repository.name }}
+          path: ${{ github.event.repository.name }}.zip
+
+      - name: Display structure of downloaded files
+        run: ls -R
+        working-directory: ${{ github.event.repository.name }}
+
+      - name: Display structure of downloaded files 2
+        run: ls -R
 
       - name: Run plugin check
         uses: wordpress/plugin-check-action@ec9b3fe9beaa76bcc4510b7ba2cb5855a5f80f3f #v1.1.4
