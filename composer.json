@@ -16,7 +16,8 @@
 	"require-dev": {
 		"wp-coding-standards/wpcs": "^2.2",
 		"dealerdirect/phpcodesniffer-composer-installer": "^0.7",
-		"10up/phpcs-composer": "dev-master"
+		"10up/phpcs-composer": "dev-master",
+		"sirbrillig/phpcs-changed": "dev-trunk"
 	},
 	"scripts": {
 		"phpcs": "vendor/bin/phpcs",
