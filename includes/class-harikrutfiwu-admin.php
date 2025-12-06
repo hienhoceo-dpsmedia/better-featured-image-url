@@ -357,7 +357,13 @@ class HARIKRUTFIWU_Admin {
 	 * @return void
 	 */
 	public function harikrutfiwu_settings_init() {
-		register_setting( 'harikrutfiwu', HARIKRUTFIWU_OPTIONS );
+		register_setting(
+			'harikrutfiwu',
+			HARIKRUTFIWU_OPTIONS,
+			array(
+				'sanitize_callback' => array( $this, 'harikrutfiwu_sanitize_settings' )
+			)
+		);
 
 		add_settings_section(
 			'harikrutfiwu_section',
@@ -390,6 +396,22 @@ class HARIKRUTFIWU_Admin {
 				'class'     => 'harikrutfiwu_row',
 			)
 		);
+	}
+
+	/**
+	 * Sanitize the settings
+	 *
+	 * @since 1.0
+	 * @param array $input The input data.
+	 * @return array
+	 */
+	public function harikrutfiwu_sanitize_settings( $input ) {
+		if ( ! empty( $input ) ) {
+			foreach ( $input as $key => $value ) {
+				$input[ $key ] = $this->harikrutfiwu_sanitize( $value );
+			}
+		}
+		return $input;
 	}
 
 	/**
