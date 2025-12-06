@@ -29,7 +29,7 @@ jobs:
 
       - name: Display structure of downloaded files 2
         run: |
-          unzip -o ${{ github.event.repository.name }}.zip        
+          unzip -o ./${{ github.event.repository.name }}.zip
           ls -R
 
       - name: Display structure of downloaded files
