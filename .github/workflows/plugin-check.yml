@@ -28,7 +28,9 @@ jobs:
           path: ${{ github.event.repository.name }}.zip
 
       - name: Display structure of downloaded files 2
-        run: ls -R
+        run: |
+          unzip -o ${{ github.event.repository.name }}.zip        
+          ls -R
 
       - name: Display structure of downloaded files
         run: ls -R
