@@ -17,7 +17,7 @@ jobs:
       run: 
         |
         composer run build
-        unzip -o ./${{ github.event.repository.name }}.zip
+        unzip -o ./${{ github.event.repository.name }}.zip -d ${{ github.event.repository.name }}
 
     - name: Upload the ZIP file as an artifact
       uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
