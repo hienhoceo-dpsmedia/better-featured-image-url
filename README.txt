@@ -9,7 +9,7 @@ Stable tag: 1.0.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Featured Image with URL allows to use an external URL Images as Featured Image for your post types. Includes support for Product Gallery (WooCommerce).
+Featured Image with URL allows to use an external URL Images as Featured Image for your post types. Includes support for Product Gallery(WooCommerce).
 
 == Description ==
 <h3>Featured Image with URL :</h3>
