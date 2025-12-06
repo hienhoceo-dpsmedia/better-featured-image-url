@@ -46,16 +46,16 @@ function harikrutfiwu_print_gallary_slot( $image_url = '', $count = 1 ) {
 <div id="harikrutfiwu_wcgallary_metabox_content" >
 	<?php
 	global $harikrutfiwu;
-	$count          = 1;
-	$gallary_images = $harikrutfiwu->common->harikrutfiwu_get_wcgallary_meta( $post->ID );
-	if ( ! empty( $gallary_images ) ) {
-		foreach ( $gallary_images as $gallary_image ) {
-			harikrutfiwu_print_gallary_slot( $gallary_image['url'], $count );
-			$count++;
+	$harikrutfiwu_count          = 1;
+	$harikrutfiwu_gallary_images = $harikrutfiwu->common->harikrutfiwu_get_wcgallary_meta( $post->ID );
+	if ( ! empty( $harikrutfiwu_gallary_images ) ) {
+		foreach ( $harikrutfiwu_gallary_images as $harikrutfiwu_gallary_image ) {
+			harikrutfiwu_print_gallary_slot( $harikrutfiwu_gallary_image['url'], $harikrutfiwu_count );
+			$harikrutfiwu_count++;
 		}
 	}
-	harikrutfiwu_print_gallary_slot( '', $count );
-	$count++;
+	harikrutfiwu_print_gallary_slot( '', $harikrutfiwu_count );
+	$harikrutfiwu_count++;
 	?>
 </div>
 <template id="harikrutfiwu_wcgallary_template" style="display: none;">
@@ -84,7 +84,7 @@ wp_nonce_field( 'harikrutfiwu_wcgallary_nonce_action', 'harikrutfiwu_wcgallary_n
 	}
 
 	jQuery(document).ready(function($){
-		var counter = <?php echo absint( $count ); ?>;
+		var counter = <?php echo absint( $harikrutfiwu_count ); ?>;
 		// Preview
 		$(document).on("click", ".harikrutfiwu_preview", function(e){
 			e.preventDefault();
