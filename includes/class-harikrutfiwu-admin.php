@@ -361,7 +361,7 @@ class HARIKRUTFIWU_Admin {
 			'harikrutfiwu',
 			HARIKRUTFIWU_OPTIONS,
 			array(
-				'sanitize_callback' => array( $this, 'harikrutfiwu_sanitize_settings' )
+				'sanitize_callback' => array( $this, 'harikrutfiwu_sanitize_settings' ),
 			)
 		);
 
