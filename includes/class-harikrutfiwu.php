@@ -50,15 +50,12 @@ if ( ! class_exists( 'HARIKRUTFIWU' ) ) :
 		 * @static object $instance
 		 * @uses HARIKRUTFIWU::setup_constants() Setup the constants needed.
 		 * @uses HARIKRUTFIWU::includes() Include the required files.
-		 * @uses HARIKRUTFIWU::load_textdomain() load the language files.
 		 * @see harikrutfiwu_run()
 		 * @return object|Featured_Image_with_URL the one true Featured Image with URL.
 		 */
 		public static function instance() {
 			if ( ! isset( self::$instance ) && ! ( self::$instance instanceof HARIKRUTFIWU ) ) {
 				self::$instance = new HARIKRUTFIWU();
-
-				add_action( 'plugins_loaded', array( self::$instance, 'load_textdomain' ) );
 
 				self::$instance->includes();
 				self::$instance->admin  = new HARIKRUTFIWU_Admin();
@@ -109,22 +106,6 @@ if ( ! class_exists( 'HARIKRUTFIWU' ) ) :
 		private function includes() {
 			require_once HARIKRUTFIWU_PLUGIN_DIR . 'includes/class-harikrutfiwu-admin.php';
 			require_once HARIKRUTFIWU_PLUGIN_DIR . 'includes/class-harikrutfiwu-common.php';
-		}
-
-		/**
-		 * Loads the plugin language files.
-		 *
-		 * @access public
-		 * @since 1.0.0
-		 * @return void
-		 */
-		public function load_textdomain() {
-
-			load_plugin_textdomain(
-				'featured-image-with-url',
-				false,
-				basename( dirname( __FILE__ ) ) . '/languages'
-			);
 		}
 	}
 
