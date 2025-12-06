@@ -2,6 +2,9 @@ name: PHP Compatibility
 
 on:
   push:
+    branches:
+      - develop
+      - master
   pull_request:
     branches:
       - develop
