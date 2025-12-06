@@ -25,12 +25,10 @@ jobs:
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: ${{ github.event.repository.name }}
-          path: ${{ github.event.repository.name }}.zip
+          path: ${{ github.event.repository.name }}
 
       - name: Display structure of downloaded files 2
-        run: |
-          unzip -o ./${{ github.event.repository.name }}.zip
-          ls -R
+        run: ls -R
 
       - name: Display structure of downloaded files
         run: ls -R
