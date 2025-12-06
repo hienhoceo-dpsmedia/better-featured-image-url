@@ -11,13 +11,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$image_url = '';
-$image_alt = '';
+$harikrutfiwu_image_url = '';
+$harikrutfiwu_image_alt = '';
 if ( isset( $image_meta['img_url'] ) && ! empty( $image_meta['img_url'] ) ) {
-	$image_url = esc_url( $image_meta['img_url'] );
+	$harikrutfiwu_image_url = esc_url( $image_meta['img_url'] );
 }
 if ( isset( $image_meta['img_alt'] ) && ! empty( $image_meta['img_alt'] ) ) {
-	$image_alt = esc_attr( $image_meta['img_alt'] );
+	$harikrutfiwu_image_alt = esc_attr( $image_meta['img_alt'] );
 }
 ?>
 
@@ -27,7 +27,7 @@ if ( isset( $image_meta['img_alt'] ) && ! empty( $image_meta['img_alt'] ) ) {
 		type="text"
 		name="harikrutfiwu_url"
 		placeholder="<?php esc_attr_e( 'Image URL', 'featured-image-with-url' ); ?>"
-		value="<?php echo esc_url( $image_url ); ?>"
+		value="<?php echo esc_url( $harikrutfiwu_image_url ); ?>"
 	/>
 	<a id="harikrutfiwu_preview" class="button" >
 		<?php esc_html_e( 'Preview', 'featured-image-with-url' ); ?>
@@ -38,13 +38,13 @@ if ( isset( $image_meta['img_alt'] ) && ! empty( $image_meta['img_alt'] ) ) {
 		type="text"
 		name="harikrutfiwu_alt"
 		placeholder="<?php esc_attr_e( 'Alt text (Optional)', 'featured-image-with-url' ); ?>"
-		value="<?php echo esc_attr( $image_alt ); ?>"
+		value="<?php echo esc_attr( $harikrutfiwu_image_alt ); ?>"
 	/>
 	<div>
 		<span id="harikrutfiwu_noimg">
 			<?php esc_html_e( 'No image', 'featured-image-with-url' ); ?>
 		</span>
-		<img id="harikrutfiwu_img" src="<?php echo esc_url( $image_url ); ?>" />
+		<img id="harikrutfiwu_img" src="<?php echo esc_url( $harikrutfiwu_image_url ); ?>" />
 	</div>
 
 	<a id="harikrutfiwu_remove" class="button" style="margin-top:4px;">

@@ -1,0 +1,27 @@
+name: Build release zip
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build_zip:
+    name: Build release zip
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+    
+    - name: Build the ZIP file
+      run: 
+        |
+        composer run build
+        unzip -o ./${{ github.event.repository.name }}.zip -d ${{ github.event.repository.name }}
+
+    - name: Upload the ZIP file as an artifact
+      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      with:
+        name: ${{ github.event.repository.name }}
+        path: ${{ github.event.repository.name }}
+        retention-days: 2

@@ -357,7 +357,13 @@ class HARIKRUTFIWU_Admin {
 	 * @return void
 	 */
 	public function harikrutfiwu_settings_init() {
-		register_setting( 'harikrutfiwu', HARIKRUTFIWU_OPTIONS );
+		register_setting(
+			'harikrutfiwu',
+			HARIKRUTFIWU_OPTIONS,
+			array(
+				'sanitize_callback' => array( $this, 'harikrutfiwu_sanitize_settings' )
+			)
+		);
 
 		add_settings_section(
 			'harikrutfiwu_section',
@@ -390,6 +396,22 @@ class HARIKRUTFIWU_Admin {
 				'class'     => 'harikrutfiwu_row',
 			)
 		);
+	}
+
+	/**
+	 * Sanitize the settings
+	 *
+	 * @since 1.0
+	 * @param array $input The input data.
+	 * @return array
+	 */
+	public function harikrutfiwu_sanitize_settings( $input ) {
+		if ( ! empty( $input ) ) {
+			foreach ( $input as $key => $value ) {
+				$input[ $key ] = $this->harikrutfiwu_sanitize( $value );
+			}
+		}
+		return $input;
 	}
 
 	/**
@@ -640,7 +662,7 @@ class HARIKRUTFIWU_Admin {
 					printf(
 						/* translators: 1: Plugin name, 2: Migration URL */
 						esc_html__( 'You are currently using the %1$s plugin, which has been closed and is no longer receiving maintenance. To ensure the uninterrupted functionality of the plugin, please migrate your data from %1$s to %2$s.', 'featured-image-with-url' ),
-						'<strong>' . esc_html__( 'Featured Image by URL', 'featured-image-by-url' ) . '</strong>',
+						'<strong>' . esc_html__( 'Featured Image by URL', 'featured-image-with-url' ) . '</strong>',
 						'<strong>' . esc_html__( 'Featured Image with URL', 'featured-image-with-url' ) . '</strong>'
 					);
 					?>
