@@ -947,8 +947,62 @@ class HARIKRUTFIWU_Admin {
 
 		$attachment_id = media_sideload_image( $image_url, $post_id, null, 'id' );
 		if ( is_wp_error( $attachment_id ) ) {
-			update_post_meta( $post_id, $this->download_error_meta, $attachment_id->get_error_message() );
-			return $attachment_id;
+			// Fallback mime-aware download for dynamic URLs (e.g. without standard file extensions).
+			$tmp = download_url( $image_url );
+			if ( ! is_wp_error( $tmp ) && is_string( $tmp ) ) {
+				$mime_type = function_exists( 'wp_get_image_mime' ) ? wp_get_image_mime( $tmp ) : '';
+				if ( ! $mime_type && function_exists( 'mime_content_type' ) ) {
+					$mime_type = mime_content_type( $tmp );
+				}
+
+				$ext = '';
+				if ( $mime_type ) {
+					$mime_map = array(
+						'image/jpeg' => 'jpg',
+						'image/jpg'  => 'jpg',
+						'image/png'  => 'png',
+						'image/gif'  => 'gif',
+						'image/webp' => 'webp',
+					);
+					if ( isset( $mime_map[ $mime_type ] ) ) {
+						$ext = $mime_map[ $mime_type ];
+					}
+				}
+				if ( ! $ext ) {
+					$ext = 'jpg';
+				}
+
+				$filename_base = '';
+				if ( ! empty( $image_alt ) ) {
+					$filename_base = function_exists( 'sanitize_title' ) ? sanitize_title( $image_alt ) : trim( preg_replace( '/[^a-z0-9]+/', '-', strtolower( $image_alt ) ), '-' );
+				}
+				if ( empty( $filename_base ) ) {
+					$post_title = get_the_title( $post_id );
+					if ( ! empty( $post_title ) ) {
+						$filename_base = function_exists( 'sanitize_title' ) ? sanitize_title( $post_title ) : trim( preg_replace( '/[^a-z0-9]+/', '-', strtolower( $post_title ) ), '-' );
+					}
+				}
+				if ( empty( $filename_base ) ) {
+					$filename_base = 'image-' . $post_id;
+				}
+
+				$filename = $filename_base . '.' . $ext;
+
+				$file_array = array(
+					'name'     => $filename,
+					'tmp_name' => $tmp,
+				);
+
+				$attachment_id = media_handle_sideload( $file_array, $post_id );
+				if ( is_wp_error( $attachment_id ) ) {
+					@unlink( $tmp );
+					update_post_meta( $post_id, $this->download_error_meta, $attachment_id->get_error_message() );
+					return $attachment_id;
+				}
+			} else {
+				update_post_meta( $post_id, $this->download_error_meta, $attachment_id->get_error_message() );
+				return $attachment_id;
+			}
 		}
 
 		$attachment_id = absint( $attachment_id );

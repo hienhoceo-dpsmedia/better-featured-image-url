@@ -14,6 +14,8 @@ $GLOBALS['wp_post_meta']     = array();
 $GLOBALS['wp_posts']         = array();
 $GLOBALS['sideload_calls']   = array();
 $GLOBALS['sideload_result']  = 44;
+$GLOBALS['download_url_result'] = false;
+$GLOBALS['media_handle_result'] = 55;
 $GLOBALS['registered_hooks'] = array();
 $GLOBALS['safe_redirect_to'] = '';
 $GLOBALS['mock_post_counts'] = array();
@@ -130,7 +132,7 @@ function get_posts( $args = array() ) {
 }
 
 function get_the_title( $post_id ) {
-	return isset( $GLOBALS['wp_posts'][ $post_id ] ) ? $GLOBALS['wp_posts'][ $post_id ]->post_title : '';
+	return isset( $GLOBALS['wp_posts'][ $post_id ]->post_title ) ? $GLOBALS['wp_posts'][ $post_id ]->post_title : '';
 }
 
 function get_edit_post_link( $post_id ) {
@@ -156,6 +158,24 @@ function wp_die( $message ) {
 function media_sideload_image( $url, $post_id, $description = null, $return_type = 'html' ) {
 	$GLOBALS['sideload_calls'][] = compact( 'url', 'post_id', 'description', 'return_type' );
 	return $GLOBALS['sideload_result'];
+}
+
+function download_url( $url ) {
+	return $GLOBALS['download_url_result'];
+}
+
+function media_handle_sideload( $file_array, $post_id ) {
+	$GLOBALS['media_handle_sideload_file'] = $file_array;
+	$GLOBALS['media_handle_sideload_post_id'] = $post_id;
+	return $GLOBALS['media_handle_result'];
+}
+
+function wp_get_image_mime( $file ) {
+	return 'image/jpeg';
+}
+
+function wp_tempnam() {
+	return tempnam( sys_get_temp_dir(), 'bfiwu-test-' );
 }
 
 function is_wp_error( $value ) {
@@ -219,6 +239,9 @@ function reset_state() {
 	$GLOBALS['wp_posts']        = array();
 	$GLOBALS['sideload_calls']  = array();
 	$GLOBALS['sideload_result'] = 44;
+	$GLOBALS['download_url_result'] = false;
+	$GLOBALS['media_handle_result'] = 55;
+	unset( $GLOBALS['media_handle_sideload_file'], $GLOBALS['media_handle_sideload_post_id'] );
 	$GLOBALS['safe_redirect_to']  = '';
 	$GLOBALS['mock_post_counts']  = array();
 	$GLOBALS['mock_get_posts']    = array();
@@ -281,6 +304,22 @@ $tests = array(
 		assert_same( '', get_post_meta( 103, '_thumbnail_id', true ), 'Thumbnail should stay empty on failed download.' );
 		assert_same( 'https://cdn.example.test/broken.jpg', get_post_meta( 103, '_harikrutfiwu_url', true ), 'External URL fallback should remain.' );
 		assert_same( 'No file', get_post_meta( 103, '_harikrutfiwu_download_error', true ), 'Download error should be stored for diagnosis.' );
+	},
+	'api image urls without file extension use mime-aware fallback download' => function() {
+		reset_state();
+		update_option( HARIKRUTFIWU_OPTIONS, array( 'harikrutfiwu_download_external_images' => '1' ) );
+		$GLOBALS['sideload_result'] = new WP_Error( 'image_sideload_failed', 'Địa chỉ URL hình ảnh không đúng.' );
+		$temp_file = tempnam( sys_get_temp_dir(), 'bfiwu-api-' );
+		file_put_contents( $temp_file, 'fake-image' );
+		$GLOBALS['download_url_result'] = $temp_file;
+		$GLOBALS['media_handle_result'] = 77;
+		$admin = new HARIKRUTFIWU_Admin();
+
+		save_external_url( $admin, 104, 'https://cdn.example.test/api/Image?id=abc&type=4&mode=pad', 'API image' );
+
+		assert_same( 77, get_post_meta( 104, '_thumbnail_id', true ), 'Fallback attachment should become the featured image.' );
+		assert_same( 'api-image.jpg', $GLOBALS['media_handle_sideload_file']['name'], 'Fallback should provide a MIME-derived filename.' );
+		assert_same( '', get_post_meta( 104, '_harikrutfiwu_download_error', true ), 'Fallback success should clear the sideload error.' );
 	},
 	'manual batch action redirects with completion status' => function() {
 		reset_state();
