@@ -72,6 +72,8 @@ class HARIKRUTFIWU_Admin {
 			add_action( 'admin_menu', array( $this, 'harikrutfiwu_add_options_page' ) );
 			add_action( 'admin_init', array( $this, 'harikrutfiwu_settings_init' ) );
 			add_action( 'admin_init', array( $this, 'harikrutfiwu_maybe_schedule_download_batch' ) );
+			add_action( 'admin_notices', array( $this, 'maybe_display_manual_download_notice' ) );
+			add_action( 'admin_post_harikrutfiwu_manual_download_batch', array( $this, 'handle_manual_download_batch' ) );
 			// Add & Save Product Variation Featured image by URL.
 			add_action( 'woocommerce_product_after_variable_attributes', array( $this, 'harikrutfiwu_add_product_variation_image_selector' ), 10, 3 );
 			add_action( 'woocommerce_save_product_variation', array( $this, 'harikrutfiwu_save_product_variation_image' ), 10, 2 );
@@ -359,6 +361,8 @@ class HARIKRUTFIWU_Admin {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
+		$options         = get_option( HARIKRUTFIWU_OPTIONS, array() );
+		$download_images = isset( $options['harikrutfiwu_download_external_images'] ) ? $options['harikrutfiwu_download_external_images'] : false;
 		?>
 		<div class="wrap">
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
@@ -374,6 +378,19 @@ class HARIKRUTFIWU_Admin {
 				submit_button( 'Save Settings' );
 				?>
 			</form>
+			<?php if ( $download_images ) : ?>
+				<hr />
+				<h2><?php esc_html_e( 'Manual download test', 'featured-image-with-url' ); ?></h2>
+				<p><?php esc_html_e( 'Run one small batch now to download up to 10 existing external featured image URLs into the Media Library.', 'featured-image-with-url' ); ?></p>
+				<p>
+					<a
+						href="<?php echo esc_url( wp_nonce_url( add_query_arg( 'action', 'harikrutfiwu_manual_download_batch', admin_url( 'admin-post.php' ) ), 'harikrutfiwu_manual_download_batch_action', 'harikrutfiwu_manual_download_nonce' ) ); ?>"
+						class="button button-secondary"
+					>
+						<?php esc_html_e( 'Run 10-image batch now', 'featured-image-with-url' ); ?>
+					</a>
+				</p>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
@@ -856,6 +873,63 @@ class HARIKRUTFIWU_Admin {
 
 		update_option( 'harikrutfiwu_download_batch_complete', false );
 		$this->harikrutfiwu_schedule_download_batch();
+	}
+
+	/**
+	 * Handle manual background batch trigger from the settings page.
+	 *
+	 * @since 1.1.0
+	 * @return void
+	 */
+	public function handle_manual_download_batch() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		if ( ! isset( $_GET['harikrutfiwu_manual_download_nonce'] ) || ! wp_verify_nonce( sanitize_key( $_GET['harikrutfiwu_manual_download_nonce'] ), 'harikrutfiwu_manual_download_batch_action' ) ) {
+			wp_die( esc_html__( 'Action failed. Please refresh the page and retry.', 'featured-image-with-url' ) );
+		}
+
+		$this->harikrutfiwu_download_external_images_batch();
+
+		$status = get_option( 'harikrutfiwu_download_batch_complete', false ) ? 'complete' : 'queued';
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'page'                         => 'harikrutfiwu',
+					'harikrutfiwu_manual_download' => $status,
+				),
+				admin_url( 'options-general.php' )
+			)
+		);
+		if ( defined( 'HARIKRUTFIWU_TESTING' ) && HARIKRUTFIWU_TESTING ) {
+			return;
+		}
+		exit;
+	}
+
+	/**
+	 * Display manual batch status notices.
+	 *
+	 * @since 1.1.0
+	 * @return void
+	 */
+	public function maybe_display_manual_download_notice() {
+		if ( ! isset( $_GET['harikrutfiwu_manual_download'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return;
+		}
+
+		$status = sanitize_key( $_GET['harikrutfiwu_manual_download'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( 'complete' === $status ) {
+			$message = __( 'Manual download batch completed. No more eligible external featured image URLs were found, or the last batch finished.', 'featured-image-with-url' );
+		} else {
+			$message = __( 'Manual download batch ran. More images may remain, so you can run another batch or let WP-Cron continue in the background.', 'featured-image-with-url' );
+		}
+		?>
+		<div class="notice notice-success is-dismissible">
+			<p><?php echo esc_html( $message ); ?></p>
+		</div>
+		<?php
 	}
 
 	/**

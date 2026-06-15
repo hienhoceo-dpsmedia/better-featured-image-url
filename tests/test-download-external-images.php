@@ -7,6 +7,7 @@ define( 'ABSPATH', __DIR__ . '/' );
 define( 'HARIKRUTFIWU_OPTIONS', 'harikrutfiwu_options' );
 define( 'HARIKRUTFIWU_WCGALLARY', '_harikrutfiwu_wcgallary' );
 define( 'HARIKRUTFIWU_PLUGIN_DIR', dirname( __DIR__ ) . '/' );
+define( 'HARIKRUTFIWU_TESTING', true );
 
 $GLOBALS['wp_options']       = array();
 $GLOBALS['wp_post_meta']     = array();
@@ -14,6 +15,7 @@ $GLOBALS['wp_posts']         = array();
 $GLOBALS['sideload_calls']   = array();
 $GLOBALS['sideload_result']  = 44;
 $GLOBALS['registered_hooks'] = array();
+$GLOBALS['safe_redirect_to'] = '';
 
 function is_admin() {
 	return true;
@@ -43,6 +45,10 @@ function current_user_can() {
 
 function post_type_supports() {
 	return true;
+}
+
+function get_post_types() {
+	return array( 'post' => 'post', 'page' => 'page' );
 }
 
 function wp_verify_nonce() {
@@ -104,6 +110,26 @@ function update_option( $key, $value ) {
 	return true;
 }
 
+function get_posts() {
+	return array();
+}
+
+function admin_url( $path = '' ) {
+	return 'https://example.test/wp-admin/' . ltrim( $path, '/' );
+}
+
+function add_query_arg( $args, $url ) {
+	return $url . '?' . http_build_query( $args );
+}
+
+function wp_safe_redirect( $url ) {
+	$GLOBALS['safe_redirect_to'] = $url;
+}
+
+function wp_die( $message ) {
+	throw new Exception( $message );
+}
+
 function media_sideload_image( $url, $post_id, $description = null, $return_type = 'html' ) {
 	$GLOBALS['sideload_calls'][] = compact( 'url', 'post_id', 'description', 'return_type' );
 	return $GLOBALS['sideload_result'];
@@ -148,7 +174,9 @@ function reset_state() {
 	$GLOBALS['wp_posts']        = array();
 	$GLOBALS['sideload_calls']  = array();
 	$GLOBALS['sideload_result'] = 44;
-	$_POST                     = array();
+	$GLOBALS['safe_redirect_to']  = '';
+	$_POST                       = array();
+	$_GET                        = array();
 }
 
 function assert_same( $expected, $actual, $message ) {
@@ -207,6 +235,16 @@ $tests = array(
 		assert_same( 'https://cdn.example.test/broken.jpg', get_post_meta( 103, '_harikrutfiwu_url', true ), 'External URL fallback should remain.' );
 		assert_same( 'No file', get_post_meta( 103, '_harikrutfiwu_download_error', true ), 'Download error should be stored for diagnosis.' );
 	},
+	'manual batch action redirects with completion status' => function() {
+		reset_state();
+		update_option( HARIKRUTFIWU_OPTIONS, array( 'harikrutfiwu_download_external_images' => '1' ) );
+		$admin = new HARIKRUTFIWU_Admin();
+		$_GET  = array( 'harikrutfiwu_manual_download_nonce' => 'ok' );
+
+		$admin->handle_manual_download_batch();
+
+		assert_same( 'https://example.test/wp-admin/options-general.php?page=harikrutfiwu&harikrutfiwu_manual_download=complete', $GLOBALS['safe_redirect_to'], 'Manual action should redirect back to settings with status.' );
+	},
 );
 
 $failures = 0;
@@ -214,7 +252,7 @@ foreach ( $tests as $name => $test ) {
 	try {
 		$test();
 		echo "[PASS] {$name}\n";
-	} catch ( Exception $exception ) {
+	} catch ( Throwable $exception ) {
 		$failures++;
 		echo "[FAIL] {$name}: {$exception->getMessage()}\n";
 	}
