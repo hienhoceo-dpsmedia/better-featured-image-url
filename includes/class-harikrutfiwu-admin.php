@@ -404,6 +404,47 @@ class HARIKRUTFIWU_Admin {
 					</tbody>
 				</table>
 
+				<?php if ( ! empty( $download_stats['downloaded'] ) ) : ?>
+					<?php $success_downloads = $this->harikrutfiwu_get_recent_success_downloads(); ?>
+					<?php if ( ! empty( $success_downloads ) ) : ?>
+						<h2><?php esc_html_e( 'Recent successful downloads', 'featured-image-with-url' ); ?></h2>
+						<table class="widefat striped" style="max-width: 1100px;">
+							<thead>
+								<tr>
+									<th scope="col"><?php esc_html_e( 'ID', 'featured-image-with-url' ); ?></th>
+									<th scope="col"><?php esc_html_e( 'Type', 'featured-image-with-url' ); ?></th>
+									<th scope="col"><?php esc_html_e( 'Title', 'featured-image-with-url' ); ?></th>
+									<th scope="col"><?php esc_html_e( 'External URL', 'featured-image-with-url' ); ?></th>
+									<th scope="col"><?php esc_html_e( 'Attachment ID', 'featured-image-with-url' ); ?></th>
+								</tr>
+							</thead>
+							<tbody>
+								<?php foreach ( $success_downloads as $success_download ) : ?>
+									<tr>
+										<td><?php echo esc_html( $success_download['post_id'] ); ?></td>
+										<td><?php echo esc_html( $success_download['post_type'] ); ?></td>
+										<td>
+											<a href="<?php echo esc_url( $success_download['edit_url'] ); ?>">
+												<?php echo esc_html( $success_download['title'] ); ?>
+											</a>
+										</td>
+										<td style="word-break: break-all;">
+											<a href="<?php echo esc_url( $success_download['url'] ); ?>" target="_blank" rel="noopener noreferrer">
+												<?php echo esc_html( $success_download['url'] ); ?>
+											</a>
+										</td>
+										<td>
+											<a href="<?php echo esc_url( admin_url( 'post.php?post=' . $success_download['attachment_id'] . '&action=edit' ) ); ?>">
+												<?php echo esc_html( $success_download['attachment_id'] ); ?>
+											</a>
+										</td>
+									</tr>
+								<?php endforeach; ?>
+							</tbody>
+						</table>
+					<?php endif; ?>
+				<?php endif; ?>
+
 				<?php if ( ! empty( $download_stats['failed'] ) ) : ?>
 					<?php $failed_downloads = $this->harikrutfiwu_get_failed_downloads(); ?>
 					<h2><?php esc_html_e( 'Failed download details', 'featured-image-with-url' ); ?></h2>
@@ -917,6 +958,48 @@ class HARIKRUTFIWU_Admin {
 		}
 
 		return $failed_downloads;
+	}
+
+	/**
+	 * Get recent successful download details for display in settings.
+	 *
+	 * @since 1.1.3
+	 * @param int $limit Number of success items to fetch.
+	 * @return array
+	 */
+	public function harikrutfiwu_get_recent_success_downloads( $limit = 10 ) {
+		$post_ids = get_posts(
+			array(
+				'post_type'      => $this->harikrutfiwu_get_posttypes(),
+				'post_status'    => 'any',
+				'fields'         => 'ids',
+				'posts_per_page' => absint( $limit ),
+				'orderby'        => 'modified',
+				'order'          => 'DESC',
+				'meta_query'     => array(
+					array(
+						'key'     => $this->downloaded_attachment_meta,
+						'compare' => 'EXISTS',
+					),
+				),
+			)
+		);
+
+		$success_downloads = array();
+		foreach ( $post_ids as $post_id ) {
+			$image_meta = $this->harikrutfiwu_get_image_meta( $post_id );
+			$attachment_id = absint( get_post_meta( $post_id, $this->downloaded_attachment_meta, true ) );
+			$success_downloads[] = array(
+				'post_id'       => absint( $post_id ),
+				'post_type'     => get_post_type( $post_id ),
+				'title'         => get_the_title( $post_id ),
+				'edit_url'      => get_edit_post_link( $post_id ),
+				'url'           => isset( $image_meta['img_url'] ) ? $image_meta['img_url'] : '',
+				'attachment_id' => $attachment_id,
+			);
+		}
+
+		return $success_downloads;
 	}
 
 	/**

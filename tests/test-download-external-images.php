@@ -370,6 +370,29 @@ $tests = array(
 		assert_same( 'https://cdn.example.test/missing.jpg', $failed[0]['url'], 'Failed item should include source URL.' );
 		assert_same( 'Not Found', $failed[0]['error'], 'Failed item should include error reason.' );
 	},
+	'recent success download list includes post title url and attachment id' => function() {
+		reset_state();
+		$GLOBALS['wp_posts'][301] = (object) array(
+			'ID'         => 301,
+			'post_type'  => 'product',
+			'post_title' => 'Successful Product Image',
+		);
+		$GLOBALS['wp_post_meta'][301]['_harikrutfiwu_url']                   = array( 'img_url' => 'https://cdn.example.test/success.jpg' );
+		$GLOBALS['wp_post_meta'][301]['_harikrutfiwu_downloaded_attachment_id'] = 456;
+		$GLOBALS['mock_get_posts'] = array(
+			'_harikrutfiwu_downloaded_attachment_id:EXISTS' => array( 301 ),
+		);
+		$admin = new HARIKRUTFIWU_Admin();
+
+		$success = $admin->harikrutfiwu_get_recent_success_downloads();
+
+		assert_same( 1, count( $success ), 'One successful item should be returned.' );
+		assert_same( 301, $success[0]['post_id'], 'Successful item should include post ID.' );
+		assert_same( 'product', $success[0]['post_type'], 'Successful item should include post type.' );
+		assert_same( 'Successful Product Image', $success[0]['title'], 'Successful item should include title.' );
+		assert_same( 'https://cdn.example.test/success.jpg', $success[0]['url'], 'Successful item should include source URL.' );
+		assert_same( 456, $success[0]['attachment_id'], 'Successful item should include attachment ID.' );
+	},
 );
 
 $failures = 0;
