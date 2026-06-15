@@ -21,6 +21,7 @@ Featured Image with URL allows to use an external URL Images as Featured Image f
 * Set Featured image by URL for all post types including custom post types.
 * Optionally download external featured image URLs to the Media Library and set them as real featured images.
 * Run a manual 10-image download batch from the settings page to test existing posts immediately.
+* View download progress stats for total, downloaded, failed, and remaining external featured images.
 * WooCommerce Product Gallery by URLs.
 * Image from URL for WooCommerce Product variation.
 * Display Resized Images as per image sizes like "thumbnail", "medium" or any custom-size
@@ -72,6 +73,7 @@ This plugin based on the initial fork of [Featured Image by URL](https://wordpre
 * **Added:** Optional setting to download external featured image URLs into the Media Library and set the downloaded attachment as the real featured image.
 * **Added:** Background batch processing for existing external featured image URLs when the setting is enabled.
 * **Added:** Manual settings-page button to run a 10-image download batch immediately.
+* **Added:** Settings-page download progress stats.
 * **Added:** Compatibility-safe tracking of downloaded source URLs, attachment IDs, and download errors while preserving legacy external URL meta.
 
 == 1.0.4 - 2024-12-06 ==

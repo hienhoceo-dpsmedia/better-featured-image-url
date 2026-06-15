@@ -16,6 +16,7 @@ $GLOBALS['sideload_calls']   = array();
 $GLOBALS['sideload_result']  = 44;
 $GLOBALS['registered_hooks'] = array();
 $GLOBALS['safe_redirect_to'] = '';
+$GLOBALS['mock_post_counts'] = array();
 
 function is_admin() {
 	return true;
@@ -110,7 +111,7 @@ function update_option( $key, $value ) {
 	return true;
 }
 
-function get_posts() {
+function get_posts( $args = array() ) {
 	return array();
 }
 
@@ -166,6 +167,28 @@ class WP_Error {
 	}
 }
 
+class WP_Query {
+	public $found_posts = 0;
+
+	public function __construct( $args = array() ) {
+		if ( ! isset( $args['meta_query'] ) ) {
+			return;
+		}
+
+		$keys = array();
+		foreach ( $args['meta_query'] as $query ) {
+			if ( isset( $query['key'] ) ) {
+				$keys[] = $query['key'] . ':' . ( isset( $query['compare'] ) ? $query['compare'] : '=' );
+			}
+		}
+
+		$signature = implode( '|', $keys );
+		if ( isset( $GLOBALS['mock_post_counts'][ $signature ] ) ) {
+			$this->found_posts = (int) $GLOBALS['mock_post_counts'][ $signature ];
+		}
+	}
+}
+
 require_once dirname( __DIR__ ) . '/includes/class-harikrutfiwu-admin.php';
 
 function reset_state() {
@@ -175,6 +198,7 @@ function reset_state() {
 	$GLOBALS['sideload_calls']  = array();
 	$GLOBALS['sideload_result'] = 44;
 	$GLOBALS['safe_redirect_to']  = '';
+	$GLOBALS['mock_post_counts']  = array();
 	$_POST                       = array();
 	$_GET                        = array();
 }
@@ -244,6 +268,22 @@ $tests = array(
 		$admin->handle_manual_download_batch();
 
 		assert_same( 'https://example.test/wp-admin/options-general.php?page=harikrutfiwu&harikrutfiwu_manual_download=complete', $GLOBALS['safe_redirect_to'], 'Manual action should redirect back to settings with status.' );
+	},
+	'download stats report total downloaded failed and remaining counts' => function() {
+		reset_state();
+		$GLOBALS['mock_post_counts'] = array(
+			'_harikrutfiwu_url:EXISTS' => 12,
+			'_harikrutfiwu_downloaded_attachment_id:EXISTS' => 5,
+			'_harikrutfiwu_download_error:EXISTS' => 2,
+		);
+		$admin = new HARIKRUTFIWU_Admin();
+
+		$stats = $admin->harikrutfiwu_get_download_stats();
+
+		assert_same( 12, $stats['total'], 'Total should include all posts with external URL meta.' );
+		assert_same( 5, $stats['downloaded'], 'Downloaded should count posts with downloaded attachment meta.' );
+		assert_same( 2, $stats['failed'], 'Failed should count posts with download error meta.' );
+		assert_same( 5, $stats['remaining'], 'Remaining should subtract downloaded and failed from total.' );
 	},
 );
 

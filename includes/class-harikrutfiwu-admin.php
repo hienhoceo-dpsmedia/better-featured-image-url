@@ -379,7 +379,30 @@ class HARIKRUTFIWU_Admin {
 				?>
 			</form>
 			<?php if ( $download_images ) : ?>
+				<?php $download_stats = $this->harikrutfiwu_get_download_stats(); ?>
 				<hr />
+				<h2><?php esc_html_e( 'Download status', 'featured-image-with-url' ); ?></h2>
+				<table class="widefat striped" style="max-width: 520px;">
+					<tbody>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'External image URLs found', 'featured-image-with-url' ); ?></th>
+							<td><?php echo esc_html( number_format_i18n( $download_stats['total'] ) ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Downloaded to Media Library', 'featured-image-with-url' ); ?></th>
+							<td><?php echo esc_html( number_format_i18n( $download_stats['downloaded'] ) ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Failed downloads', 'featured-image-with-url' ); ?></th>
+							<td><?php echo esc_html( number_format_i18n( $download_stats['failed'] ) ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Remaining to process', 'featured-image-with-url' ); ?></th>
+							<td><?php echo esc_html( number_format_i18n( $download_stats['remaining'] ) ); ?></td>
+						</tr>
+					</tbody>
+				</table>
+
 				<h2><?php esc_html_e( 'Manual download test', 'featured-image-with-url' ); ?></h2>
 				<p><?php esc_html_e( 'Run one small batch now to download up to 10 existing external featured image URLs into the Media Library.', 'featured-image-with-url' ); ?></p>
 				<p>
@@ -743,6 +766,69 @@ class HARIKRUTFIWU_Admin {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Get download progress statistics.
+	 *
+	 * @since 1.1.0
+	 * @return array
+	 */
+	public function harikrutfiwu_get_download_stats() {
+		$total      = $this->harikrutfiwu_count_posts_by_meta_query(
+			array(
+				array(
+					'key'     => $this->image_meta_url,
+					'compare' => 'EXISTS',
+				),
+			)
+		);
+		$downloaded = $this->harikrutfiwu_count_posts_by_meta_query(
+			array(
+				array(
+					'key'     => $this->downloaded_attachment_meta,
+					'compare' => 'EXISTS',
+				),
+			)
+		);
+		$failed     = $this->harikrutfiwu_count_posts_by_meta_query(
+			array(
+				array(
+					'key'     => $this->download_error_meta,
+					'compare' => 'EXISTS',
+				),
+			)
+		);
+		$remaining  = max( 0, $total - $downloaded - $failed );
+
+		return array(
+			'total'      => $total,
+			'downloaded' => $downloaded,
+			'failed'     => $failed,
+			'remaining'  => $remaining,
+		);
+	}
+
+	/**
+	 * Count posts by meta query across enabled post types.
+	 *
+	 * @since 1.1.0
+	 * @param array $meta_query Meta query.
+	 * @return int
+	 */
+	private function harikrutfiwu_count_posts_by_meta_query( $meta_query ) {
+		$query = new WP_Query(
+			array(
+				'post_type'      => $this->harikrutfiwu_get_posttypes(),
+				'post_status'    => 'any',
+				'fields'         => 'ids',
+				'posts_per_page' => 1,
+				'no_found_rows'  => false,
+				'meta_query'     => $meta_query,
+			)
+		);
+
+		return isset( $query->found_posts ) ? absint( $query->found_posts ) : 0;
 	}
 
 	/**
