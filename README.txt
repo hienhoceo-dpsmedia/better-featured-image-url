@@ -5,7 +5,7 @@ Requires PHP: 7.4
 Requires at least: 6.0
 Tested up to: 6.9
 WC tested up to: 10.4
-Stable tag: 1.1.3
+Stable tag: 1.1.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -69,6 +69,9 @@ This plugin based on the initial fork of [Featured Image by URL](https://wordpre
 5. Settings page (Settings > Featured Image with URL).
 
 == Changelog ==
+
+== 1.1.4 - 2026-06-15 ==
+* **Feature:** Download images in random order instead of sequential post ID order for better initial coverage.
 
 == 1.1.3 - 2026-06-15 ==
 * **Added:** Display a table of the 10 most recent successful downloads in settings page.

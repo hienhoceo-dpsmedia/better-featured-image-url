@@ -1153,6 +1153,7 @@ class HARIKRUTFIWU_Admin {
 				'post_status'    => 'any',
 				'fields'         => 'ids',
 				'posts_per_page' => 10,
+				'orderby'        => 'rand',
 				'meta_query'     => array(
 					array(
 						'key'     => $this->image_meta_url,
