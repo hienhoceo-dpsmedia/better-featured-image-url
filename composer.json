@@ -20,6 +20,7 @@
 		"sirbrillig/phpcs-changed": "dev-trunk"
 	},
 	"scripts": {
+		"test": "php tests/test-download-external-images.php",
 		"phpcs": "vendor/bin/phpcs",
 		"lint-fix": "./vendor/bin/phpcbf --standard=phpcs.xml",
 		"build": "composer archive --file=featured-image-with-url --format=zip"

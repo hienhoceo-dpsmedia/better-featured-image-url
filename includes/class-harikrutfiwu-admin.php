@@ -36,11 +36,34 @@ class HARIKRUTFIWU_Admin {
 	private $image_meta_alt = '_harikrutfiwu_alt';
 
 	/**
+	 * Downloaded attachment ID meta key.
+	 *
+	 * @var string
+	 */
+	private $downloaded_attachment_meta = '_harikrutfiwu_downloaded_attachment_id';
+
+	/**
+	 * Downloaded source URL meta key.
+	 *
+	 * @var string
+	 */
+	private $downloaded_source_meta = '_harikrutfiwu_downloaded_source_url';
+
+	/**
+	 * Download error meta key.
+	 *
+	 * @var string
+	 */
+	private $download_error_meta = '_harikrutfiwu_download_error';
+
+	/**
 	 * Initialize the class and set its properties.
 	 *
 	 * @since    1.0.0
 	 */
 	public function __construct() {
+		add_action( 'harikrutfiwu_download_external_images_batch', array( $this, 'harikrutfiwu_download_external_images_batch' ) );
+
 		if ( is_admin() ) {
 			add_action( 'add_meta_boxes', array( $this, 'harikrutfiwu_add_metabox' ), 10, 2 );
 			add_action( 'save_post', array( $this, 'harikrutfiwu_save_image_url_data' ), 10, 2 );
@@ -48,6 +71,7 @@ class HARIKRUTFIWU_Admin {
 			add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_scripts' ) );
 			add_action( 'admin_menu', array( $this, 'harikrutfiwu_add_options_page' ) );
 			add_action( 'admin_init', array( $this, 'harikrutfiwu_settings_init' ) );
+			add_action( 'admin_init', array( $this, 'harikrutfiwu_maybe_schedule_download_batch' ) );
 			// Add & Save Product Variation Featured image by URL.
 			add_action( 'woocommerce_product_after_variable_attributes', array( $this, 'harikrutfiwu_add_product_variation_image_selector' ), 10, 3 );
 			add_action( 'woocommerce_save_product_variation', array( $this, 'harikrutfiwu_save_product_variation_image' ), 10, 2 );
@@ -197,9 +221,13 @@ class HARIKRUTFIWU_Admin {
 				if ( $image_alt ) {
 					update_post_meta( $post_id, $this->image_meta_alt, $image_alt );
 				}
+				$this->harikrutfiwu_maybe_sideload_featured_image( $post_id, $this->harikrutfiwu_extract_image_url( $image_url ), $image_alt );
 			} else {
 				delete_post_meta( $post_id, $this->image_meta_url );
 				delete_post_meta( $post_id, $this->image_meta_alt );
+				delete_post_meta( $post_id, $this->downloaded_attachment_meta );
+				delete_post_meta( $post_id, $this->downloaded_source_meta );
+				delete_post_meta( $post_id, $this->download_error_meta );
 			}
 		}
 
@@ -396,6 +424,18 @@ class HARIKRUTFIWU_Admin {
 				'class'     => 'harikrutfiwu_row',
 			)
 		);
+
+		add_settings_field(
+			'harikrutfiwu_download_external_images',
+			__( 'Download External Images', 'featured-image-with-url' ),
+			array( $this, 'download_external_images_callback' ),
+			'harikrutfiwu',
+			'harikrutfiwu_section',
+			array(
+				'label_for' => 'harikrutfiwu_download_external_images',
+				'class'     => 'harikrutfiwu_row',
+			)
+		);
 	}
 
 	/**
@@ -406,10 +446,15 @@ class HARIKRUTFIWU_Admin {
 	 * @return array
 	 */
 	public function harikrutfiwu_sanitize_settings( $input ) {
+		$old_options = get_option( HARIKRUTFIWU_OPTIONS, array() );
 		if ( ! empty( $input ) ) {
 			foreach ( $input as $key => $value ) {
 				$input[ $key ] = $this->harikrutfiwu_sanitize( $value );
 			}
+		}
+		if ( ! empty( $input['harikrutfiwu_download_external_images'] ) && empty( $old_options['harikrutfiwu_download_external_images'] ) ) {
+			update_option( 'harikrutfiwu_download_batch_complete', false );
+			$this->harikrutfiwu_schedule_download_batch();
 		}
 		return $input;
 	}
@@ -490,6 +535,33 @@ class HARIKRUTFIWU_Admin {
 			<?php esc_html_e( 'You need Jetpack plugin installed & connected  for enable this functionality.', 'featured-image-with-url' ); ?>
 		</p>
 
+		<?php
+	}
+
+	/**
+	 * Callback function for downloading external images into Media Library.
+	 *
+	 * @since 1.1.0
+	 * @param array $args Arguments.
+	 * @return void
+	 */
+	public function download_external_images_callback( $args ) {
+		$options         = get_option( HARIKRUTFIWU_OPTIONS );
+		$download_images = isset( $options['harikrutfiwu_download_external_images'] ) ? $options['harikrutfiwu_download_external_images'] : false;
+		?>
+		<label for="harikrutfiwu_download_external_images">
+			<input
+				name="<?php echo esc_attr( HARIKRUTFIWU_OPTIONS . '[' . $args['label_for'] . ']' ); ?>"
+				type="checkbox"
+				value="1"
+				id="harikrutfiwu_download_external_images"
+				<?php echo ( $download_images ) ? 'checked="checked"' : ''; ?>
+			/>
+			<?php esc_html_e( 'Download external featured image URLs to the Media Library and set them as real featured images.', 'featured-image-with-url' ); ?>
+		</label>
+		<p class="description">
+			<?php esc_html_e( 'Existing external image URLs are processed in small background batches. If a download fails, the original URL remains available as a fallback.', 'featured-image-with-url' ); ?>
+		</p>
 		<?php
 	}
 
@@ -597,10 +669,193 @@ class HARIKRUTFIWU_Admin {
 					);
 				}
 				update_post_meta( $variation_id, $this->image_meta_url, $image_url );
+				$this->harikrutfiwu_maybe_sideload_featured_image( $variation_id, $this->harikrutfiwu_extract_image_url( $image_url ) );
 			} else {
 				delete_post_meta( $variation_id, $this->image_meta_url );
+				delete_post_meta( $variation_id, $this->downloaded_attachment_meta );
+				delete_post_meta( $variation_id, $this->downloaded_source_meta );
+				delete_post_meta( $variation_id, $this->download_error_meta );
 			}
 		}
+	}
+
+	/**
+	 * Check whether external images should be downloaded.
+	 *
+	 * @since 1.1.0
+	 * @return bool
+	 */
+	public function harikrutfiwu_should_download_external_images() {
+		$options = get_option( HARIKRUTFIWU_OPTIONS, array() );
+		return ! empty( $options['harikrutfiwu_download_external_images'] );
+	}
+
+	/**
+	 * Extract the URL from legacy string or product array meta.
+	 *
+	 * @since 1.1.0
+	 * @param string|array $image_url Image URL meta.
+	 * @return string
+	 */
+	public function harikrutfiwu_extract_image_url( $image_url ) {
+		if ( is_array( $image_url ) && isset( $image_url['img_url'] ) ) {
+			return $image_url['img_url'];
+		}
+
+		return is_string( $image_url ) ? $image_url : '';
+	}
+
+	/**
+	 * Determine if an imported local featured image is already available.
+	 *
+	 * @since 1.1.0
+	 * @param int    $post_id   Post ID.
+	 * @param string $image_url Image URL.
+	 * @return bool
+	 */
+	public function harikrutfiwu_has_downloaded_featured_image( $post_id, $image_url = '' ) {
+		$attachment_id = absint( get_post_meta( $post_id, $this->downloaded_attachment_meta, true ) );
+		$source_url    = get_post_meta( $post_id, $this->downloaded_source_meta, true );
+
+		if ( $attachment_id <= 0 ) {
+			return false;
+		}
+
+		if ( '' !== $image_url && $source_url !== $image_url ) {
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Download an external featured image and set it as the real post thumbnail.
+	 *
+	 * @since 1.1.0
+	 * @param int    $post_id   Post ID.
+	 * @param string $image_url Image URL.
+	 * @param string $image_alt Image alt text.
+	 * @return int|WP_Error|false
+	 */
+	public function harikrutfiwu_maybe_sideload_featured_image( $post_id, $image_url, $image_alt = '' ) {
+		if ( ! $this->harikrutfiwu_should_download_external_images() || empty( $image_url ) ) {
+			return false;
+		}
+
+		if ( $this->harikrutfiwu_has_downloaded_featured_image( $post_id, $image_url ) ) {
+			$attachment_id = absint( get_post_meta( $post_id, $this->downloaded_attachment_meta, true ) );
+			set_post_thumbnail( $post_id, $attachment_id );
+			return $attachment_id;
+		}
+
+		if ( ! function_exists( 'media_sideload_image' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/media.php';
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			require_once ABSPATH . 'wp-admin/includes/image.php';
+		}
+
+		$attachment_id = media_sideload_image( $image_url, $post_id, null, 'id' );
+		if ( is_wp_error( $attachment_id ) ) {
+			update_post_meta( $post_id, $this->download_error_meta, $attachment_id->get_error_message() );
+			return $attachment_id;
+		}
+
+		$attachment_id = absint( $attachment_id );
+		if ( $attachment_id <= 0 ) {
+			update_post_meta( $post_id, $this->download_error_meta, __( 'The external image could not be downloaded.', 'featured-image-with-url' ) );
+			return false;
+		}
+
+		set_post_thumbnail( $post_id, $attachment_id );
+		update_post_meta( $post_id, $this->downloaded_attachment_meta, $attachment_id );
+		update_post_meta( $post_id, $this->downloaded_source_meta, $image_url );
+		delete_post_meta( $post_id, $this->download_error_meta );
+
+		if ( '' !== $image_alt ) {
+			update_post_meta( $attachment_id, '_wp_attachment_image_alt', $image_alt );
+			wp_update_post(
+				array(
+					'ID'         => $attachment_id,
+					'post_title' => $image_alt,
+				)
+			);
+		}
+
+		return $attachment_id;
+	}
+
+	/**
+	 * Schedule background processing when the download option is enabled.
+	 *
+	 * @since 1.1.0
+	 * @return void
+	 */
+	public function harikrutfiwu_maybe_schedule_download_batch() {
+		if ( $this->harikrutfiwu_should_download_external_images() && ! get_option( 'harikrutfiwu_download_batch_complete', false ) ) {
+			$this->harikrutfiwu_schedule_download_batch();
+		}
+	}
+
+	/**
+	 * Schedule the next download batch.
+	 *
+	 * @since 1.1.0
+	 * @return void
+	 */
+	public function harikrutfiwu_schedule_download_batch() {
+		if ( ! wp_next_scheduled( 'harikrutfiwu_download_external_images_batch' ) ) {
+			wp_schedule_single_event( time() + 60, 'harikrutfiwu_download_external_images_batch' );
+		}
+	}
+
+	/**
+	 * Download existing external featured images in small batches.
+	 *
+	 * @since 1.1.0
+	 * @return void
+	 */
+	public function harikrutfiwu_download_external_images_batch() {
+		if ( ! $this->harikrutfiwu_should_download_external_images() ) {
+			return;
+		}
+
+		$post_ids = get_posts(
+			array(
+				'post_type'      => $this->harikrutfiwu_get_posttypes(),
+				'post_status'    => 'any',
+				'fields'         => 'ids',
+				'posts_per_page' => 10,
+				'meta_query'     => array(
+					array(
+						'key'     => $this->image_meta_url,
+						'compare' => 'EXISTS',
+					),
+					array(
+						'key'     => $this->downloaded_attachment_meta,
+						'compare' => 'NOT EXISTS',
+					),
+					array(
+						'key'     => $this->download_error_meta,
+						'compare' => 'NOT EXISTS',
+					),
+				),
+			)
+		);
+
+		if ( empty( $post_ids ) ) {
+			update_option( 'harikrutfiwu_download_batch_complete', true );
+			return;
+		}
+
+		foreach ( $post_ids as $post_id ) {
+			$image_meta = $this->harikrutfiwu_get_image_meta( $post_id );
+			if ( ! empty( $image_meta['img_url'] ) ) {
+				$this->harikrutfiwu_maybe_sideload_featured_image( $post_id, $image_meta['img_url'], isset( $image_meta['img_alt'] ) ? $image_meta['img_alt'] : '' );
+			}
+		}
+
+		update_option( 'harikrutfiwu_download_batch_complete', false );
+		$this->harikrutfiwu_schedule_download_batch();
 	}
 
 	/**

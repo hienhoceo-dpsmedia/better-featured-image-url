@@ -109,6 +109,9 @@ class HARIKRUTFIWU_Common {
 		if ( '_thumbnail_id' === $meta_key ) {
 			$image_data = $harikrutfiwu->admin->harikrutfiwu_get_image_meta( $object_id );
 			if ( isset( $image_data['img_url'] ) && ! empty( $image_data['img_url'] ) ) {
+				if ( $harikrutfiwu->admin->harikrutfiwu_has_downloaded_featured_image( $object_id, $image_data['img_url'] ) ) {
+					return $value;
+				}
 				if ( 'product_variation' === $post_type ) {
 					if ( ! is_admin() ) {
 						return $object_id;
@@ -146,6 +149,10 @@ class HARIKRUTFIWU_Common {
 		$image_data = $harikrutfiwu->admin->harikrutfiwu_get_image_meta( $post_id );
 
 		if ( ! empty( $image_data['img_url'] ) ) {
+			if ( $harikrutfiwu->admin->harikrutfiwu_has_downloaded_featured_image( $post_id, $image_data['img_url'] ) ) {
+				return $html;
+			}
+
 			$image_url = $image_data['img_url'];
 
 			// Run Photon Resize Magic.

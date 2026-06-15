@@ -5,7 +5,7 @@ Requires PHP: 7.4
 Requires at least: 6.0
 Tested up to: 6.9
 WC tested up to: 10.4
-Stable tag: 1.0.4
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,7 @@ Featured Image with URL allows to use an external URL Images as Featured Image f
 <h3>Features:</h3>
 
 * Set Featured image by URL for all post types including custom post types.
+* Optionally download external featured image URLs to the Media Library and set them as real featured images.
 * WooCommerce Product Gallery by URLs.
 * Image from URL for WooCommerce Product variation.
 * Display Resized Images as per image sizes like "thumbnail", "medium" or any custom-size
@@ -65,6 +66,11 @@ This plugin based on the initial fork of [Featured Image by URL](https://wordpre
 5. Settings page (Settings > Featured Image with URL).
 
 == Changelog ==
+
+== 1.1.0 - 2026-06-15 ==
+* **Added:** Optional setting to download external featured image URLs into the Media Library and set the downloaded attachment as the real featured image.
+* **Added:** Background batch processing for existing external featured image URLs when the setting is enabled.
+* **Added:** Compatibility-safe tracking of downloaded source URLs, attachment IDs, and download errors while preserving legacy external URL meta.
 
 == 1.0.4 - 2024-12-06 ==
 * **Changed:** Bump WordPress "tested up to" version 6.9

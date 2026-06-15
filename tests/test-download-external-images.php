@@ -57,6 +57,14 @@ function sanitize_text_field( $value ) {
 	return trim( (string) $value );
 }
 
+function __( $text ) {
+	return $text;
+}
+
+function absint( $value ) {
+	return abs( (int) $value );
+}
+
 function wp_unslash( $value ) {
 	return $value;
 }
