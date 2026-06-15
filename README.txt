@@ -5,7 +5,7 @@ Requires PHP: 7.4
 Requires at least: 6.0
 Tested up to: 6.9
 WC tested up to: 10.4
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,7 @@ Featured Image with URL allows to use an external URL Images as Featured Image f
 * Optionally download external featured image URLs to the Media Library and set them as real featured images.
 * Run a manual 10-image download batch from the settings page to test existing posts immediately.
 * View download progress stats for total, downloaded, failed, and remaining external featured images.
+* Inspect failed downloads with item title, type, external URL, and error reason.
 * WooCommerce Product Gallery by URLs.
 * Image from URL for WooCommerce Product variation.
 * Display Resized Images as per image sizes like "thumbnail", "medium" or any custom-size
@@ -68,6 +69,10 @@ This plugin based on the initial fork of [Featured Image by URL](https://wordpre
 5. Settings page (Settings > Featured Image with URL).
 
 == Changelog ==
+
+== 1.1.1 - 2026-06-15 ==
+* **Added:** Failed download details table showing item ID, type, title, external URL, and stored error reason.
+* **Added:** Button to clear failed download errors so fixed items can be retried.
 
 == 1.1.0 - 2026-06-15 ==
 * **Added:** Optional setting to download external featured image URLs into the Media Library and set the downloaded attachment as the real featured image.

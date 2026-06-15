@@ -17,6 +17,7 @@ $GLOBALS['sideload_result']  = 44;
 $GLOBALS['registered_hooks'] = array();
 $GLOBALS['safe_redirect_to'] = '';
 $GLOBALS['mock_post_counts'] = array();
+$GLOBALS['mock_get_posts']   = array();
 
 function is_admin() {
 	return true;
@@ -112,7 +113,28 @@ function update_option( $key, $value ) {
 }
 
 function get_posts( $args = array() ) {
+	if ( isset( $args['meta_query'] ) ) {
+		$keys = array();
+		foreach ( $args['meta_query'] as $query ) {
+			if ( isset( $query['key'] ) ) {
+				$keys[] = $query['key'] . ':' . ( isset( $query['compare'] ) ? $query['compare'] : '=' );
+			}
+		}
+
+		$signature = implode( '|', $keys );
+		if ( isset( $GLOBALS['mock_get_posts'][ $signature ] ) ) {
+			return $GLOBALS['mock_get_posts'][ $signature ];
+		}
+	}
 	return array();
+}
+
+function get_the_title( $post_id ) {
+	return isset( $GLOBALS['wp_posts'][ $post_id ] ) ? $GLOBALS['wp_posts'][ $post_id ]->post_title : '';
+}
+
+function get_edit_post_link( $post_id ) {
+	return 'https://example.test/wp-admin/post.php?post=' . (int) $post_id . '&action=edit';
 }
 
 function admin_url( $path = '' ) {
@@ -199,6 +221,7 @@ function reset_state() {
 	$GLOBALS['sideload_result'] = 44;
 	$GLOBALS['safe_redirect_to']  = '';
 	$GLOBALS['mock_post_counts']  = array();
+	$GLOBALS['mock_get_posts']    = array();
 	$_POST                       = array();
 	$_GET                        = array();
 }
@@ -284,6 +307,29 @@ $tests = array(
 		assert_same( 5, $stats['downloaded'], 'Downloaded should count posts with downloaded attachment meta.' );
 		assert_same( 2, $stats['failed'], 'Failed should count posts with download error meta.' );
 		assert_same( 5, $stats['remaining'], 'Remaining should subtract downloaded and failed from total.' );
+	},
+	'failed download list includes post title url and error reason' => function() {
+		reset_state();
+		$GLOBALS['wp_posts'][201] = (object) array(
+			'ID'         => 201,
+			'post_type'  => 'product',
+			'post_title' => 'Broken Product Image',
+		);
+		$GLOBALS['wp_post_meta'][201]['_harikrutfiwu_url']            = array( 'img_url' => 'https://cdn.example.test/missing.jpg' );
+		$GLOBALS['wp_post_meta'][201]['_harikrutfiwu_download_error'] = 'Not Found';
+		$GLOBALS['mock_get_posts'] = array(
+			'_harikrutfiwu_download_error:EXISTS' => array( 201 ),
+		);
+		$admin = new HARIKRUTFIWU_Admin();
+
+		$failed = $admin->harikrutfiwu_get_failed_downloads();
+
+		assert_same( 1, count( $failed ), 'One failed item should be returned.' );
+		assert_same( 201, $failed[0]['post_id'], 'Failed item should include post ID.' );
+		assert_same( 'product', $failed[0]['post_type'], 'Failed item should include post type.' );
+		assert_same( 'Broken Product Image', $failed[0]['title'], 'Failed item should include title.' );
+		assert_same( 'https://cdn.example.test/missing.jpg', $failed[0]['url'], 'Failed item should include source URL.' );
+		assert_same( 'Not Found', $failed[0]['error'], 'Failed item should include error reason.' );
 	},
 );
 

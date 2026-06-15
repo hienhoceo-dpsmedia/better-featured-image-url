@@ -74,6 +74,7 @@ class HARIKRUTFIWU_Admin {
 			add_action( 'admin_init', array( $this, 'harikrutfiwu_maybe_schedule_download_batch' ) );
 			add_action( 'admin_notices', array( $this, 'maybe_display_manual_download_notice' ) );
 			add_action( 'admin_post_harikrutfiwu_manual_download_batch', array( $this, 'handle_manual_download_batch' ) );
+			add_action( 'admin_post_harikrutfiwu_clear_download_errors', array( $this, 'handle_clear_download_errors' ) );
 			// Add & Save Product Variation Featured image by URL.
 			add_action( 'woocommerce_product_after_variable_attributes', array( $this, 'harikrutfiwu_add_product_variation_image_selector' ), 10, 3 );
 			add_action( 'woocommerce_save_product_variation', array( $this, 'harikrutfiwu_save_product_variation_image' ), 10, 2 );
@@ -402,6 +403,52 @@ class HARIKRUTFIWU_Admin {
 						</tr>
 					</tbody>
 				</table>
+
+				<?php if ( ! empty( $download_stats['failed'] ) ) : ?>
+					<?php $failed_downloads = $this->harikrutfiwu_get_failed_downloads(); ?>
+					<h2><?php esc_html_e( 'Failed download details', 'featured-image-with-url' ); ?></h2>
+					<p>
+						<?php esc_html_e( 'These items were skipped by future batches until the error is cleared. Edit the item or source URL, then clear errors and run another batch.', 'featured-image-with-url' ); ?>
+					</p>
+					<table class="widefat striped" style="max-width: 1100px;">
+						<thead>
+							<tr>
+								<th scope="col"><?php esc_html_e( 'ID', 'featured-image-with-url' ); ?></th>
+								<th scope="col"><?php esc_html_e( 'Type', 'featured-image-with-url' ); ?></th>
+								<th scope="col"><?php esc_html_e( 'Title', 'featured-image-with-url' ); ?></th>
+								<th scope="col"><?php esc_html_e( 'External URL', 'featured-image-with-url' ); ?></th>
+								<th scope="col"><?php esc_html_e( 'Error', 'featured-image-with-url' ); ?></th>
+							</tr>
+						</thead>
+						<tbody>
+							<?php foreach ( $failed_downloads as $failed_download ) : ?>
+								<tr>
+									<td><?php echo esc_html( $failed_download['post_id'] ); ?></td>
+									<td><?php echo esc_html( $failed_download['post_type'] ); ?></td>
+									<td>
+										<a href="<?php echo esc_url( $failed_download['edit_url'] ); ?>">
+											<?php echo esc_html( $failed_download['title'] ); ?>
+										</a>
+									</td>
+									<td style="word-break: break-all;">
+										<a href="<?php echo esc_url( $failed_download['url'] ); ?>" target="_blank" rel="noopener noreferrer">
+											<?php echo esc_html( $failed_download['url'] ); ?>
+										</a>
+									</td>
+									<td><?php echo esc_html( $failed_download['error'] ); ?></td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
+					<p>
+						<a
+							href="<?php echo esc_url( wp_nonce_url( add_query_arg( 'action', 'harikrutfiwu_clear_download_errors', admin_url( 'admin-post.php' ) ), 'harikrutfiwu_clear_download_errors_action', 'harikrutfiwu_clear_download_errors_nonce' ) ); ?>"
+							class="button button-secondary"
+						>
+							<?php esc_html_e( 'Clear failed errors and retry later', 'featured-image-with-url' ); ?>
+						</a>
+					</p>
+				<?php endif; ?>
 
 				<h2><?php esc_html_e( 'Manual download test', 'featured-image-with-url' ); ?></h2>
 				<p><?php esc_html_e( 'Run one small batch now to download up to 10 existing external featured image URLs into the Media Library.', 'featured-image-with-url' ); ?></p>
@@ -832,6 +879,47 @@ class HARIKRUTFIWU_Admin {
 	}
 
 	/**
+	 * Get failed download details for display in settings.
+	 *
+	 * @since 1.1.1
+	 * @param int $limit Number of failed items to fetch.
+	 * @return array
+	 */
+	public function harikrutfiwu_get_failed_downloads( $limit = 50 ) {
+		$post_ids = get_posts(
+			array(
+				'post_type'      => $this->harikrutfiwu_get_posttypes(),
+				'post_status'    => 'any',
+				'fields'         => 'ids',
+				'posts_per_page' => absint( $limit ),
+				'orderby'        => 'modified',
+				'order'          => 'DESC',
+				'meta_query'     => array(
+					array(
+						'key'     => $this->download_error_meta,
+						'compare' => 'EXISTS',
+					),
+				),
+			)
+		);
+
+		$failed_downloads = array();
+		foreach ( $post_ids as $post_id ) {
+			$image_meta = $this->harikrutfiwu_get_image_meta( $post_id );
+			$failed_downloads[] = array(
+				'post_id'   => absint( $post_id ),
+				'post_type' => get_post_type( $post_id ),
+				'title'     => get_the_title( $post_id ),
+				'edit_url'  => get_edit_post_link( $post_id ),
+				'url'       => isset( $image_meta['img_url'] ) ? $image_meta['img_url'] : '',
+				'error'     => get_post_meta( $post_id, $this->download_error_meta, true ),
+			);
+		}
+
+		return $failed_downloads;
+	}
+
+	/**
 	 * Download an external featured image and set it as the real post thumbnail.
 	 *
 	 * @since 1.1.0
@@ -995,6 +1083,42 @@ class HARIKRUTFIWU_Admin {
 	}
 
 	/**
+	 * Clear stored download errors so failed items can be retried.
+	 *
+	 * @since 1.1.1
+	 * @return void
+	 */
+	public function handle_clear_download_errors() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		if ( ! isset( $_GET['harikrutfiwu_clear_download_errors_nonce'] ) || ! wp_verify_nonce( sanitize_key( $_GET['harikrutfiwu_clear_download_errors_nonce'] ), 'harikrutfiwu_clear_download_errors_action' ) ) {
+			wp_die( esc_html__( 'Action failed. Please refresh the page and retry.', 'featured-image-with-url' ) );
+		}
+
+		$failed_downloads = $this->harikrutfiwu_get_failed_downloads( 500 );
+		foreach ( $failed_downloads as $failed_download ) {
+			delete_post_meta( $failed_download['post_id'], $this->download_error_meta );
+		}
+		update_option( 'harikrutfiwu_download_batch_complete', false );
+
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'page'                         => 'harikrutfiwu',
+					'harikrutfiwu_manual_download' => 'errors-cleared',
+				),
+				admin_url( 'options-general.php' )
+			)
+		);
+		if ( defined( 'HARIKRUTFIWU_TESTING' ) && HARIKRUTFIWU_TESTING ) {
+			return;
+		}
+		exit;
+	}
+
+	/**
 	 * Display manual batch status notices.
 	 *
 	 * @since 1.1.0
@@ -1008,6 +1132,8 @@ class HARIKRUTFIWU_Admin {
 		$status = sanitize_key( $_GET['harikrutfiwu_manual_download'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( 'complete' === $status ) {
 			$message = __( 'Manual download batch completed. No more eligible external featured image URLs were found, or the last batch finished.', 'featured-image-with-url' );
+		} elseif ( 'errors-cleared' === $status ) {
+			$message = __( 'Download errors were cleared. Run another manual batch to retry those items.', 'featured-image-with-url' );
 		} else {
 			$message = __( 'Manual download batch ran. More images may remain, so you can run another batch or let WP-Cron continue in the background.', 'featured-image-with-url' );
 		}
